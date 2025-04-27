@@ -89,6 +89,30 @@
   become: true
   ignore_errors: true
 
+#- name: activate firewalld
+#  ansible.builtin.service:
+#    name: firewalld
+#    state: started
+#    enabled: yes
+#  become: true
+#  when: ansible_facts['os_family'] == 'RedHat'
+#
+#- name: Open Kubernetes ports
+#  ansible.builtin.firewalld:
+#    port: "{{ item }}"
+#    permanent: yes
+#    state: enabled
+#    immediate: yes
+#  loop:
+#    - 6443/tcp  # API server
+#    - 2379-2380/tcp  # etcd
+#    - 10250/tcp  # Kubelet
+#    - 10259/tcp  # Scheduler
+#    - 10257/tcp  # Controller Manager
+#    - 30000-32767/tcp  # NodePort range
+#  become: true
+
+
 - name: Add Docker CE repository for containerd
   ansible.builtin.get_url:
     url: https://download.docker.com/linux/centos/docker-ce.repo
@@ -128,11 +152,10 @@
     content: |
       [kubernetes]
       name=Kubernetes
-      baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+      baseurl=https://pkgs.k8s.io/core:/stable:/v1.33/rpm/
       enabled=1
       gpgcheck=1
-      repo_gpgcheck=1
-      gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+      gpgkey=https://pkgs.k8s.io/core:/stable:/v1.33/rpm/repodata/repomd.xml.key
     dest: /etc/yum.repos.d/kubernetes.repo
     mode: '0644'
   become: true
