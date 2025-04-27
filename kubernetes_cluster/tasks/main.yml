@@ -25,31 +25,6 @@
     update_cache: yes
   become: true
 
-- name: Open Kubernetes ports
-  ansible.builtin.firewalld:
-    service: "{{ item }}"
-    permanent: true
-    state: enabled
-  loop:
-    - name: kubernetes
-      port: 6443/tcp
-      zone: public
-    - name: kubelet
-      port: 10250/tcp
-      zone: public
-    - name: kube-scheduler
-      port: 10251/tcp
-      zone: public
-    - name: kube-controller-manager
-      port: 10252/tcp
-      zone: public
-  become: true
-  when: ansible_facts['os_family'] == 'RedHat'
-  ignore_errors: true  # Skip if firewalld is not installed
-  # Note: The above task assumes firewalld is installed and running.
-  # If firewalld is not used, you may need to adjust the firewall rules manually.
-  # Alternatively, you can use iptables or another firewall management tool.
-
 - name: Set SELinux to permissive mode
   ansible.builtin.command: setenforce 0
   become: true
