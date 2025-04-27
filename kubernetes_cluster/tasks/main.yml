@@ -156,6 +156,14 @@
   #notify: Restart containerd
   #when: ansible_facts['os_family'] == 'RedHat'
 
+- name: Update sandbox_image for Kubernetes v1.33
+  ansible.builtin.lineinfile:
+    path: /etc/containerd/config.toml
+    regexp: '^ *sandbox_image ='
+    line: '  sandbox_image = "registry.k8s.io/pause:3.10"'
+  become: true
+
+
 - name: Enable and start containerd
   ansible.builtin.service:
     name: containerd
@@ -224,19 +232,19 @@
   become: true
 
 # Tasks for master node
-- name: Initialize Kubernetes cluster on master
-  ansible.builtin.command: >
-    kubeadm init --pod-network-cidr={{ kubernetes_pod_network_cidr }}
-    --apiserver-advertise-address={{ ansible_default_ipv4.address }}
-    --ignore-preflight-errors=SystemVerification,CRIService,NumCPU,Mem
-  args:
-    creates: /etc/kubernetes/admin.conf
-  become: true
-  register: kubeadm_init_result
-  retries: 3
-  delay: 10
-  until: kubeadm_init_result.rc == 0
-  when: inventory_hostname in groups['masters']
+#- name: Initialize Kubernetes cluster on master
+#  ansible.builtin.command: >
+#    kubeadm init --pod-network-cidr={{ kubernetes_pod_network_cidr }}
+#    --apiserver-advertise-address={{ ansible_default_ipv4.address }}
+#    --ignore-preflight-errors=SystemVerification,CRIService,NumCPU,Mem
+#  args:
+#    creates: /etc/kubernetes/admin.conf
+#  become: true
+#  register: kubeadm_init_result
+#  retries: 3
+#  delay: 10
+#  until: kubeadm_init_result.rc == 0
+#  when: inventory_hostname in groups['masters']
 
 - name: Check if kubelet config exists on master
   ansible.builtin.stat:
@@ -255,12 +263,12 @@
   become: true
   changed_when: false
   register: kubelet_logs
-  when: inventory_hostname in groups['masters'] and kubeadm_init_result.failed
+  when: inventory_hostname in groups['masters'] 
 
 - name: Display kubelet logs if init failed
   ansible.builtin.debug:
     msg: "{{ kubelet_logs.stdout_lines }}"
-  when: inventory_hostname in groups['masters'] and kubeadm_init_result.failed
+  when: inventory_hostname in groups['masters']
 
 - name: Start kubelet service on master
   ansible.builtin.service:
