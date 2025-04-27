@@ -1,0 +1,5 @@
+---
+# vars file for kubernetes_cluster
+kubernetes_pod_network_cidr: "10.244.0.0/16"
+calico_version: "v3.25.0"
+ansible_user: "ansible"
