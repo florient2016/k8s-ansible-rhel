@@ -140,6 +140,13 @@
   become: true
   changed_when: true
 
+- name: Ensure CRI plugin is enabled in containerd
+  ansible.builtin.lineinfile:
+    path: /etc/containerd/config.toml
+    regexp: '^disabled_plugins ='
+    line: 'disabled_plugins = []'
+  become: true
+
 - name: Enable cgroups v2 in containerd
   ansible.builtin.lineinfile:
     path: /etc/containerd/config.toml
