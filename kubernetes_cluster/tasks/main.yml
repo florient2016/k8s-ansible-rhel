@@ -156,80 +156,80 @@
   #notify: Restart containerd
   #when: ansible_facts['os_family'] == 'RedHat'
 
-- name: Update sandbox_image for Kubernetes v1.33
-  ansible.builtin.lineinfile:
-    path: /etc/containerd/config.toml
-    regexp: '^ *sandbox_image ='
-    line: '  sandbox_image = "registry.k8s.io/pause:3.10"'
-  become: true
-
-
-- name: Enable and start containerd
-  ansible.builtin.service:
-    name: containerd
-    state: started
-    enabled: yes
-  become: true
-  register: containerd_service
-
-- name: Check if containerd socket exists
-  ansible.builtin.stat:
-    path: /var/run/containerd/containerd.sock
-  register: containerd_socket
-  become: true
-
-- name: Fail if containerd socket is missing
-  ansible.builtin.fail:
-    msg: "Containerd socket /var/run/containerd/containerd.sock is missing."
-  when: not containerd_socket.stat.exists
-
-- name: Debug containerd logs if service failed
-  ansible.builtin.command: journalctl -u containerd -n 50
-  become: true
-  changed_when: false
-  register: containerd_logs
-  when: containerd_service.failed
-
-- name: Display containerd logs if service failed
-  ansible.builtin.debug:
-    msg: "{{ containerd_logs.stdout_lines }}"
-  when: containerd_service.failed
-
-- name: Add Kubernetes repository
-  ansible.builtin.copy:
-    content: |
-      [kubernetes]
-      name=Kubernetes
-      baseurl=https://pkgs.k8s.io/core:/stable:/v1.33/rpm/
-      enabled=1
-      gpgcheck=1
-      gpgkey=https://pkgs.k8s.io/core:/stable:/v1.33/rpm/repodata/repomd.xml.key
-    dest: /etc/yum.repos.d/kubernetes.repo
-    mode: '0644'
-  become: true
-
-- name: Install Kubernetes packages
-  ansible.builtin.dnf:
-    name:
-      - kubeadm
-      - kubelet
-      - kubectl
-    state: latest
-    update_cache: yes
-  become: true
-
-- name: enable autocompletion for kubectl
-  ansible.builtin.command: >
-    echo 'source <(kubectl completion bash)' >> /home/{{ ansible_user }}/.bashrc
-  become: true
-  when: inventory_hostname in groups['masters']
-
-- name: Enable kubelet service
-  ansible.builtin.service:
-    name: kubelet
-    state: stopped  # Stop kubelet until kubeadm configures it
-    enabled: yes
-  become: true
+#- name: Update sandbox_image for Kubernetes v1.33
+#  ansible.builtin.lineinfile:
+#    path: /etc/containerd/config.toml
+#    regexp: '^ *sandbox_image ='
+#    line: '  sandbox_image = "registry.k8s.io/pause:3.10"'
+#  become: true
+#
+#
+#- name: Enable and start containerd
+#  ansible.builtin.service:
+#    name: containerd
+#    state: started
+#    enabled: yes
+#  become: true
+#  register: containerd_service
+#
+#- name: Check if containerd socket exists
+#  ansible.builtin.stat:
+#    path: /var/run/containerd/containerd.sock
+#  register: containerd_socket
+#  become: true
+#
+#- name: Fail if containerd socket is missing
+#  ansible.builtin.fail:
+#    msg: "Containerd socket /var/run/containerd/containerd.sock is missing."
+#  when: not containerd_socket.stat.exists
+#
+#- name: Debug containerd logs if service failed
+#  ansible.builtin.command: journalctl -u containerd -n 50
+#  become: true
+#  changed_when: false
+#  register: containerd_logs
+#  when: containerd_service.failed
+#
+#- name: Display containerd logs if service failed
+#  ansible.builtin.debug:
+#    msg: "{{ containerd_logs.stdout_lines }}"
+#  when: containerd_service.failed
+#
+#- name: Add Kubernetes repository
+#  ansible.builtin.copy:
+#    content: |
+#      [kubernetes]
+#      name=Kubernetes
+#      baseurl=https://pkgs.k8s.io/core:/stable:/v1.33/rpm/
+#      enabled=1
+#      gpgcheck=1
+#      gpgkey=https://pkgs.k8s.io/core:/stable:/v1.33/rpm/repodata/repomd.xml.key
+#    dest: /etc/yum.repos.d/kubernetes.repo
+#    mode: '0644'
+#  become: true
+#
+#- name: Install Kubernetes packages
+#  ansible.builtin.dnf:
+#    name:
+#      - kubeadm
+#      - kubelet
+#      - kubectl
+#    state: latest
+#    update_cache: yes
+#  become: true
+#
+#- name: enable autocompletion for kubectl
+#  ansible.builtin.command: >
+#    echo 'source <(kubectl completion bash)' >> /home/{{ ansible_user }}/.bashrc
+#  become: true
+#  when: inventory_hostname in groups['masters']
+#
+#- name: Enable kubelet service
+#  ansible.builtin.service:
+#    name: kubelet
+#    state: stopped  # Stop kubelet until kubeadm configures it
+#    enabled: yes
+#  become: true
 
 # Tasks for master node
 #- name: Initialize Kubernetes cluster on master
@@ -246,68 +246,68 @@
 #  until: kubeadm_init_result.rc == 0
 #  when: inventory_hostname in groups['masters']
 
-- name: Check if kubelet config exists on master
-  ansible.builtin.stat:
-    path: /var/lib/kubelet/config.yaml
-  register: kubelet_config_master
-  become: true
-  when: inventory_hostname in groups['masters']
-
-- name: Fail if kubelet config is missing on master
-  ansible.builtin.fail:
-    msg: "Kubelet config /var/lib/kubelet/config.yaml is missing on master."
-  when: inventory_hostname in groups['masters'] and not kubelet_config_master.stat.exists
-
-- name: Debug kubelet logs if init failed
-  ansible.builtin.command: journalctl -u kubelet -n 50
-  become: true
-  changed_when: false
-  register: kubelet_logs
-  when: inventory_hostname in groups['masters'] 
-
-- name: Display kubelet logs if init failed
-  ansible.builtin.debug:
-    msg: "{{ kubelet_logs.stdout_lines }}"
-  when: inventory_hostname in groups['masters']
-
-- name: Start kubelet service on master
-  ansible.builtin.service:
-    name: kubelet
-    state: started
-    enabled: yes
-  become: true
-  when: inventory_hostname in groups['masters']
-
-
-- name: Create .kube directory for regular user
-  ansible.builtin.file:
-    path: /home/{{ ansible_user }}/.kube
-    state: directory
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
-    mode: '0755'
-  become: true
-  when: inventory_hostname in groups['masters']
-
-- name: Copy admin.conf to user's kube config
-  ansible.builtin.copy:
-    src: /etc/kubernetes/admin.conf
-    dest: /home/{{ ansible_user }}/.kube/config
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
-    mode: '0600'
-    remote_src: yes
-  become: true
-  when: inventory_hostname in groups['masters']
-
-- name: Install Calico pod network
-  ansible.builtin.command: >
-    kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/calico.yaml
-  become: true
-  become_user: "{{ ansible_user }}"
-  environment:
-    KUBECONFIG: /home/{{ ansible_user }}/.kube/config
-  when: inventory_hostname in groups['masters']
+#- name: Check if kubelet config exists on master
+#  ansible.builtin.stat:
+#    path: /var/lib/kubelet/config.yaml
+#  register: kubelet_config_master
+#  become: true
+#  when: inventory_hostname in groups['masters']
+#
+#- name: Fail if kubelet config is missing on master
+#  ansible.builtin.fail:
+#    msg: "Kubelet config /var/lib/kubelet/config.yaml is missing on master."
+#  when: inventory_hostname in groups['masters'] and not kubelet_config_master.stat.exists
+#
+#- name: Debug kubelet logs if init failed
+#  ansible.builtin.command: journalctl -u kubelet -n 50
+#  become: true
+#  changed_when: false
+#  register: kubelet_logs
+#  when: inventory_hostname in groups['masters'] 
+#
+#- name: Display kubelet logs if init failed
+#  ansible.builtin.debug:
+#    msg: "{{ kubelet_logs.stdout_lines }}"
+#  when: inventory_hostname in groups['masters']
+#
+#- name: Start kubelet service on master
+#  ansible.builtin.service:
+#    name: kubelet
+#    state: started
+#    enabled: yes
+#  become: true
+#  when: inventory_hostname in groups['masters']
+#
+#
+#- name: Create .kube directory for regular user
+#  ansible.builtin.file:
+#    path: /home/{{ ansible_user }}/.kube
+#    state: directory
+#    owner: "{{ ansible_user }}"
+#    group: "{{ ansible_user }}"
+#    mode: '0755'
+#  become: true
+#  when: inventory_hostname in groups['masters']
+#
+#- name: Copy admin.conf to user's kube config
+#  ansible.builtin.copy:
+#    src: /etc/kubernetes/admin.conf
+#    dest: /home/{{ ansible_user }}/.kube/config
+#    owner: "{{ ansible_user }}"
+#    group: "{{ ansible_user }}"
+#    mode: '0600'
+#    remote_src: yes
+#  become: true
+#  when: inventory_hostname in groups['masters']
+#
+#- name: Install Calico pod network
+#  ansible.builtin.command: >
+#    kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/calico.yaml
+#  become: true
+#  become_user: "{{ ansible_user }}"
+#  environment:
+#    KUBECONFIG: /home/{{ ansible_user }}/.kube/config
+#  when: inventory_hostname in groups['masters']
 
 - name: Get join command
   ansible.builtin.command: kubeadm token create --print-join-command
@@ -322,8 +322,44 @@
 
 # Tasks for worker nodes
 - name: Join worker nodes to cluster
-  ansible.builtin.command: "{{ hostvars[groups['masters'][0]].join_command }}"
+  ansible.builtin.command: "{{ hostvars[groups['masters'][0]].join_command }} --ignore-preflight-errors=SystemVerification,CRIService"
   args:
     creates: /etc/kubernetes/kubelet.conf
+  become: true
+  register: kubeadm_join_result
+  retries: 3
+  delay: 10
+  until: kubeadm_join_result.rc == 0
+  when: inventory_hostname in groups['workers']
+
+- name: Check if kubelet config exists on worker
+  ansible.builtin.stat:
+    path: /var/lib/kubelet/config.yaml
+  register: kubelet_config_worker
+  become: true
+  when: inventory_hostname in groups['workers']
+
+- name: Fail if kubelet config is missing on worker
+  ansible.builtin.fail:
+    msg: "Kubelet config /var/lib/kubelet/config.yaml is missing on worker."
+  when: inventory_hostname in groups['workers'] and not kubelet_config_worker.stat.exists
+
+- name: Debug kubelet logs if join failed
+  ansible.builtin.command: journalctl -u kubelet -n 50
+  become: true
+  changed_when: false
+  register: kubelet_logs_worker
+  when: inventory_hostname in groups['workers'] and kubeadm_join_result.failed
+
+- name: Display kubelet logs if join failed
+  ansible.builtin.debug:
+    msg: "{{ kubelet_logs_worker.stdout_lines }}"
+  when: inventory_hostname in groups['workers'] and kubeadm_join_result.failed
+
+- name: Start kubelet service on worker
+  ansible.builtin.service:
+    name: kubelet
+    state: started
+    enabled: yes
   become: true
   when: inventory_hostname in groups['workers']
