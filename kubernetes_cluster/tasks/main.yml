@@ -152,9 +152,33 @@
 - name: Enable and start containerd
   ansible.builtin.service:
     name: containerd
-    state: restarted
+    state: started
     enabled: yes
   become: true
+  register: containerd_service
+
+- name: Check if containerd socket exists
+  ansible.builtin.stat:
+    path: /var/run/containerd/containerd.sock
+  register: containerd_socket
+  become: true
+
+- name: Fail if containerd socket is missing
+  ansible.builtin.fail:
+    msg: "Containerd socket /var/run/containerd/containerd.sock is missing."
+  when: not containerd_socket.stat.exists
+
+- name: Debug containerd logs if service failed
+  ansible.builtin.command: journalctl -u containerd -n 50
+  become: true
+  changed_when: false
+  register: containerd_logs
+  when: containerd_service.failed
+
+- name: Display containerd logs if service failed
+  ansible.builtin.debug:
+    msg: "{{ containerd_logs.stdout_lines }}"
+  when: containerd_service.failed
 
 - name: Add Kubernetes repository
   ansible.builtin.copy:
@@ -188,7 +212,7 @@
 - name: Enable kubelet service
   ansible.builtin.service:
     name: kubelet
-    state: started
+    state: stopped  # Stop kubelet until kubeadm configures it
     enabled: yes
   become: true
 
@@ -197,12 +221,48 @@
   ansible.builtin.command: >
     kubeadm init --pod-network-cidr={{ kubernetes_pod_network_cidr }}
     --apiserver-advertise-address={{ ansible_default_ipv4.address }}
-    --ignore-preflight-errors=SystemVerification,NumCPU,Mem
+    --ignore-preflight-errors=SystemVerification,CRIService,NumCPU,Mem
   args:
     creates: /etc/kubernetes/admin.conf
   become: true
   register: kubeadm_init_result
+  retries: 3
+  delay: 10
+  until: kubeadm_init_result.rc == 0
   when: inventory_hostname in groups['masters']
+
+- name: Check if kubelet config exists on master
+  ansible.builtin.stat:
+    path: /var/lib/kubelet/config.yaml
+  register: kubelet_config_master
+  become: true
+  when: inventory_hostname in groups['masters']
+
+- name: Fail if kubelet config is missing on master
+  ansible.builtin.fail:
+    msg: "Kubelet config /var/lib/kubelet/config.yaml is missing on master."
+  when: inventory_hostname in groups['masters'] and not kubelet_config_master.stat.exists
+
+- name: Debug kubelet logs if init failed
+  ansible.builtin.command: journalctl -u kubelet -n 50
+  become: true
+  changed_when: false
+  register: kubelet_logs
+  when: inventory_hostname in groups['masters'] and kubeadm_init_result.failed
+
+- name: Display kubelet logs if init failed
+  ansible.builtin.debug:
+    msg: "{{ kubelet_logs.stdout_lines }}"
+  when: inventory_hostname in groups['masters'] and kubeadm_init_result.failed
+
+- name: Start kubelet service on master
+  ansible.builtin.service:
+    name: kubelet
+    state: started
+    enabled: yes
+  become: true
+  when: inventory_hostname in groups['masters']
+
 
 - name: Create .kube directory for regular user
   ansible.builtin.file:
