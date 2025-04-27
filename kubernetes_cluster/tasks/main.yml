@@ -1,229 +1,227 @@
 # tasks file for kubernetes_cluster
 ---
-#- name: Ensure system is registered with Red Hat Subscription Manager
-#  ansible.builtin.command: subscription-manager register --auto-attach
-#  become: true
-#  changed_when: true
-#  when: ansible_facts['os_family'] == 'RedHat'
-#  ignore_errors: true  # Skip if already registered or using a local repo
-#
-#- name: Enable required RHEL repositories
-#  ansible.builtin.command: subscription-manager repos --enable=rhel-8-for-x86_64-baseos-rpms --enable=rhel-8-for-x86_64-appstream-rpms
-#  become: true
-#  changed_when: true
-#  when: ansible_facts['os_family'] == 'RedHat'
-#
-#- name: Install prerequisite packages
-#  ansible.builtin.dnf:
-#    name:
-#      - curl
-#      - yum-utils
-#      - device-mapper-persistent-data
-#      - lvm2
-#      - iproute-tc
-#    state: present
-#    update_cache: yes
-#  become: true
-#
-#- name: Set SELinux to permissive mode
-#  ansible.builtin.command: setenforce 0
-#  become: true
-#  changed_when: true
-#
-#- name: Update SELinux configuration
-#  ansible.builtin.lineinfile:
-#    path: /etc/selinux/config
-#    regexp: '^SELINUX='
-#    line: SELINUX=permissive
-#  become: true
-#
-#- name: Disable swap
-#  ansible.builtin.command: swapoff -a
-#  become: true
-#  changed_when: true
-#
-#- name: Remove swap entry from /etc/fstab
-#  ansible.builtin.lineinfile:
-#    path: /etc/fstab
-#    regexp: '^.*swap.*$'
-#    state: absent
-#  become: true
-#
-#- name: Configure sysctl for Kubernetes
-#  ansible.builtin.copy:
-#    content: |
-#      net.bridge.bridge-nf-call-iptables = 1
-#      net.ipv4.ip_forward = 1
-#      net.bridge.bridge-nf-call-ip6tables = 1
-#    dest: /etc/sysctl.d/99-kubernetes.conf
-#    mode: '0644'
-#  become: true
-#
-#- name: Apply sysctl settings
-#  ansible.builtin.command: sysctl --system
-#  become: true
-#  changed_when: true
-#
-#- name: Add containerd module configuration
-#  ansible.builtin.copy:
-#    content: |
-#      overlay
-#      br_netfilter
-#    dest: /etc/modules-load.d/containerd.conf
-#    mode: '0644'
-#  become: true
-#
-#- name: Load containerd modules
-#  ansible.builtin.command: "{{ item }}"
-#  loop:
-#    - modprobe overlay
-#    - modprobe br_netfilter
-#  become: true
-#  changed_when: true
-#
-#- name: Disable firewalld (optional, for test clusters)
-#  ansible.builtin.service:
-#    name: firewalld
-#    state: stopped
-#    enabled: no
-#  become: true
-#  ignore_errors: true
+- name: Ensure system is registered with Red Hat Subscription Manager
+  ansible.builtin.command: subscription-manager register --auto-attach
+  become: true
+  changed_when: true
+  when: ansible_facts['os_family'] == 'RedHat'
+  ignore_errors: true  # Skip if already registered or using a local repo
 
-#- name: activate firewalld
-#  ansible.builtin.service:
-#    name: firewalld
-#    state: started
-#    enabled: yes
-#  become: true
-#  when: ansible_facts['os_family'] == 'RedHat'
-#
-#- name: Open Kubernetes ports
-#  ansible.builtin.firewalld:
-#    port: "{{ item }}"
-#    permanent: yes
-#    state: enabled
-#    immediate: yes
-#  loop:
-#    - 6443/tcp  # API server
-#    - 2379-2380/tcp  # etcd
-#    - 10250/tcp  # Kubelet
-#    - 10259/tcp  # Scheduler
-#    - 10257/tcp  # Controller Manager
-#    - 30000-32767/tcp  # NodePort range
-##  become: true
-#
-#
-#- name: Add Docker CE repository for containerd
-#  ansible.builtin.get_url:
-#    url: https://download.docker.com/linux/centos/docker-ce.repo
-#    dest: /etc/yum.repos.d/docker-ce.repo
-#    mode: '0644'
-#  become: true
-#
-#- name: Install containerd
-#  ansible.builtin.dnf:
-#    name:
-#      - containerd.io
-#    state: present
-#    update_cache: yes
-#  become: true
-#
-#- name: Create containerd configuration directory
-#  ansible.builtin.file:
-#    path: /etc/containerd
-#    state: directory
-#    mode: '0755'
-#  become: true
-#
-#- name: Generate default containerd configuration
-#  ansible.builtin.command: containerd config default > /etc/containerd/config.toml
-#  become: true
-#  changed_when: true
-#
-#- name: Ensure CRI plugin is enabled in containerd
-#  ansible.builtin.lineinfile:
-#    path: /etc/containerd/config.toml
-#    regexp: '^disabled_plugins ='
-#    line: 'disabled_plugins = []'
-#  become: true
-#
-#- name: Enable cgroups v2 in containerd
-#  ansible.builtin.lineinfile:
-#    path: /etc/containerd/config.toml
-#    regexp: '^ *SystemdCgroup ='
-#    line: 'SystemdCgroup = true'
-#  become: true
-  #notify: Restart containerd
-  #when: ansible_facts['os_family'] == 'RedHat'
+- name: Enable required RHEL repositories
+  ansible.builtin.command: subscription-manager repos --enable=rhel-8-for-x86_64-baseos-rpms --enable=rhel-8-for-x86_64-appstream-rpms
+  become: true
+  changed_when: true
+  when: ansible_facts['os_family'] == 'RedHat'
 
-#- name: Update sandbox_image for Kubernetes v1.33
-#  ansible.builtin.lineinfile:
-#    path: /etc/containerd/config.toml
-#    regexp: '^ *sandbox_image ='
-#    line: '  sandbox_image = "registry.k8s.io/pause:3.10"'
+- name: Install prerequisite packages
+  ansible.builtin.dnf:
+    name:
+      - curl
+      - yum-utils
+      - device-mapper-persistent-data
+      - lvm2
+      - iproute-tc
+    state: present
+    update_cache: yes
+  become: true
+
+- name: Set SELinux to permissive mode
+  ansible.builtin.command: setenforce 0
+  become: true
+  changed_when: true
+
+- name: Update SELinux configuration
+  ansible.builtin.lineinfile:
+    path: /etc/selinux/config
+    regexp: '^SELINUX='
+    line: SELINUX=permissive
+  become: true
+
+- name: Disable swap
+  ansible.builtin.command: swapoff -a
+  become: true
+  changed_when: true
+
+- name: Remove swap entry from /etc/fstab
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    regexp: '^.*swap.*$'
+    state: absent
+  become: true
+
+- name: Configure sysctl for Kubernetes
+  ansible.builtin.copy:
+    content: |
+      net.bridge.bridge-nf-call-iptables = 1
+      net.ipv4.ip_forward = 1
+      net.bridge.bridge-nf-call-ip6tables = 1
+    dest: /etc/sysctl.d/99-kubernetes.conf
+    mode: '0644'
+  become: true
+
+- name: Apply sysctl settings
+  ansible.builtin.command: sysctl --system
+  become: true
+  changed_when: true
+
+- name: Add containerd module configuration
+  ansible.builtin.copy:
+    content: |
+      overlay
+      br_netfilter
+    dest: /etc/modules-load.d/containerd.conf
+    mode: '0644'
+  become: true
+
+- name: Load containerd modules
+  ansible.builtin.command: "{{ item }}"
+  loop:
+    - modprobe overlay
+    - modprobe br_netfilter
+  become: true
+  changed_when: true
+
+- name: Disable firewalld (optional, for test clusters)
+  ansible.builtin.service:
+    name: firewalld
+    state: stopped
+    enabled: no
+  become: true
+  ignore_errors: true
+- name: activate firewalld
+  ansible.builtin.service:
+    name: firewalld
+    state: started
+    enabled: yes
+  become: true
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Open Kubernetes ports
+  ansible.builtin.firewalld:
+    port: "{{ item }}"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  loop:
+    - 6443/tcp  # API server
+    - 2379-2380/tcp  # etcd
+    - 10250/tcp  # Kubelet
+    - 10259/tcp  # Scheduler
+    - 10257/tcp  # Controller Manager
+    - 30000-32767/tcp  # NodePort range
 #  become: true
-#
-#
-#- name: Enable and start containerd
-#  ansible.builtin.service:
-#    name: containerd
-#    state: started
-#    enabled: yes
-#  become: true
-#  register: containerd_service
-#
-#- name: Check if containerd socket exists
-#  ansible.builtin.stat:
-#    path: /var/run/containerd/containerd.sock
-#  register: containerd_socket
-#  become: true
-#
-#- name: Fail if containerd socket is missing
-#  ansible.builtin.fail:
-#    msg: "Containerd socket /var/run/containerd/containerd.sock is missing."
-#  when: not containerd_socket.stat.exists
-#
-#- name: Debug containerd logs if service failed
-#  ansible.builtin.command: journalctl -u containerd -n 50
-#  become: true
-#  changed_when: false
-#  register: containerd_logs
-#  when: containerd_service.failed
-#
-#- name: Display containerd logs if service failed
-#  ansible.builtin.debug:
-#    msg: "{{ containerd_logs.stdout_lines }}"
-#  when: containerd_service.failed
-#
-#- name: Add Kubernetes repository
-#  ansible.builtin.copy:
-#    content: |
-#      [kubernetes]
-#      name=Kubernetes
-#      baseurl=https://pkgs.k8s.io/core:/stable:/v1.33/rpm/
-#      enabled=1
-#      gpgcheck=1
-#      gpgkey=https://pkgs.k8s.io/core:/stable:/v1.33/rpm/repodata/repomd.xml.key
-#    dest: /etc/yum.repos.d/kubernetes.repo
-#    mode: '0644'
-#  become: true
-#
-#- name: Install Kubernetes packages
-#  ansible.builtin.dnf:
-#    name:
-#      - kubeadm
-#      - kubelet
-#      - kubectl
-#    state: latest
-#    update_cache: yes
-#  become: true
-#
-#- name: enable autocompletion for kubectl
-#  ansible.builtin.command: >
-#    echo 'source <(kubectl completion bash)' >> /home/{{ ansible_user }}/.bashrc
-#  become: true
-#  when: inventory_hostname in groups['masters']
-#
+
+
+- name: Add Docker CE repository for containerd
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/centos/docker-ce.repo
+    dest: /etc/yum.repos.d/docker-ce.repo
+    mode: '0644'
+  become: true
+
+- name: Install containerd
+  ansible.builtin.dnf:
+    name:
+      - containerd.io
+    state: present
+    update_cache: yes
+  become: true
+
+- name: Create containerd configuration directory
+  ansible.builtin.file:
+    path: /etc/containerd
+    state: directory
+    mode: '0755'
+  become: true
+
+- name: Generate default containerd configuration
+  ansible.builtin.command: containerd config default > /etc/containerd/config.toml
+  become: true
+  changed_when: true
+
+- name: Ensure CRI plugin is enabled in containerd
+  ansible.builtin.lineinfile:
+    path: /etc/containerd/config.toml
+    regexp: '^disabled_plugins ='
+    line: 'disabled_plugins = []'
+  become: true
+
+- name: Enable cgroups v2 in containerd
+  ansible.builtin.lineinfile:
+    path: /etc/containerd/config.toml
+    regexp: '^ *SystemdCgroup ='
+    line: 'SystemdCgroup = true'
+  become: true
+ #notify: Restart containerd
+ #when: ansible_facts['os_family'] == 'RedHat'
+- name: Update sandbox_image for Kubernetes v1.33
+  ansible.builtin.lineinfile:
+    path: /etc/containerd/config.toml
+    regexp: '^ *sandbox_image ='
+    line: '  sandbox_image = "registry.k8s.io/pause:3.10"'
+  become: true
+
+
+- name: Enable and start containerd
+  ansible.builtin.service:
+    name: containerd
+    state: started
+    enabled: yes
+  become: true
+  register: containerd_service
+
+- name: Check if containerd socket exists
+  ansible.builtin.stat:
+    path: /var/run/containerd/containerd.sock
+  register: containerd_socket
+  become: true
+
+- name: Fail if containerd socket is missing
+  ansible.builtin.fail:
+    msg: "Containerd socket /var/run/containerd/containerd.sock is missing."
+  when: not containerd_socket.stat.exists
+
+- name: Debug containerd logs if service failed
+  ansible.builtin.command: journalctl -u containerd -n 50
+  become: true
+  changed_when: false
+  register: containerd_logs
+  when: containerd_service.failed
+
+- name: Display containerd logs if service failed
+  ansible.builtin.debug:
+    msg: "{{ containerd_logs.stdout_lines }}"
+  when: containerd_service.failed
+
+- name: Add Kubernetes repository
+  ansible.builtin.copy:
+    content: |
+      [kubernetes]
+      name=Kubernetes
+      baseurl=https://pkgs.k8s.io/core:/stable:/v1.33/rpm/
+      enabled=1
+      gpgcheck=1
+      gpgkey=https://pkgs.k8s.io/core:/stable:/v1.33/rpm/repodata/repomd.xml.key
+    dest: /etc/yum.repos.d/kubernetes.repo
+    mode: '0644'
+  become: true
+
+- name: Install Kubernetes packages
+  ansible.builtin.dnf:
+    name:
+      - kubeadm
+      - kubelet
+      - kubectl
+    state: latest
+    update_cache: yes
+  become: true
+
+- name: enable autocompletion for kubectl
+  ansible.builtin.command: >
+    echo 'source <(kubectl completion bash)' >> /home/{{ ansible_user }}/.bashrc
+  become: true
+  when: inventory_hostname in groups['masters']
+
 #- name: Enable kubelet service
 #  ansible.builtin.service:
 #    name: kubelet
@@ -246,68 +244,68 @@
 #  until: kubeadm_init_result.rc == 0
 #  when: inventory_hostname in groups['masters']
 
-#- name: Check if kubelet config exists on master
-#  ansible.builtin.stat:
-#    path: /var/lib/kubelet/config.yaml
-#  register: kubelet_config_master
-#  become: true
-#  when: inventory_hostname in groups['masters']
-#
-#- name: Fail if kubelet config is missing on master
-#  ansible.builtin.fail:
-#    msg: "Kubelet config /var/lib/kubelet/config.yaml is missing on master."
-#  when: inventory_hostname in groups['masters'] and not kubelet_config_master.stat.exists
-#
-#- name: Debug kubelet logs if init failed
-#  ansible.builtin.command: journalctl -u kubelet -n 50
-#  become: true
-#  changed_when: false
-#  register: kubelet_logs
-#  when: inventory_hostname in groups['masters'] 
-#
-#- name: Display kubelet logs if init failed
-#  ansible.builtin.debug:
-#    msg: "{{ kubelet_logs.stdout_lines }}"
-#  when: inventory_hostname in groups['masters']
-#
-#- name: Start kubelet service on master
-#  ansible.builtin.service:
-#    name: kubelet
-#    state: started
-#    enabled: yes
-#  become: true
-#  when: inventory_hostname in groups['masters']
-#
-#
-#- name: Create .kube directory for regular user
-#  ansible.builtin.file:
-#    path: /home/{{ ansible_user }}/.kube
-#    state: directory
-#    owner: "{{ ansible_user }}"
-#    group: "{{ ansible_user }}"
-#    mode: '0755'
-#  become: true
-#  when: inventory_hostname in groups['masters']
-#
-#- name: Copy admin.conf to user's kube config
-#  ansible.builtin.copy:
-#    src: /etc/kubernetes/admin.conf
-#    dest: /home/{{ ansible_user }}/.kube/config
-#    owner: "{{ ansible_user }}"
-#    group: "{{ ansible_user }}"
-#    mode: '0600'
-#    remote_src: yes
-#  become: true
-#  when: inventory_hostname in groups['masters']
-#
-#- name: Install Calico pod network
-#  ansible.builtin.command: >
-#    kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/calico.yaml
-#  become: true
-#  become_user: "{{ ansible_user }}"
-#  environment:
-#    KUBECONFIG: /home/{{ ansible_user }}/.kube/config
-#  when: inventory_hostname in groups['masters']
+- name: Check if kubelet config exists on master
+  ansible.builtin.stat:
+    path: /var/lib/kubelet/config.yaml
+  register: kubelet_config_master
+  become: true
+  when: inventory_hostname in groups['masters']
+
+- name: Fail if kubelet config is missing on master
+  ansible.builtin.fail:
+    msg: "Kubelet config /var/lib/kubelet/config.yaml is missing on master."
+  when: inventory_hostname in groups['masters'] and not kubelet_config_master.stat.exists
+
+- name: Debug kubelet logs if init failed
+  ansible.builtin.command: journalctl -u kubelet -n 50
+  become: true
+  changed_when: false
+  register: kubelet_logs
+  when: inventory_hostname in groups['masters'] 
+
+- name: Display kubelet logs if init failed
+  ansible.builtin.debug:
+    msg: "{{ kubelet_logs.stdout_lines }}"
+  when: inventory_hostname in groups['masters']
+
+- name: Start kubelet service on master
+  ansible.builtin.service:
+    name: kubelet
+    state: started
+    enabled: yes
+  become: true
+  when: inventory_hostname in groups['masters']
+
+
+- name: Create .kube directory for regular user
+  ansible.builtin.file:
+    path: /home/{{ ansible_user }}/.kube
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+  become: true
+  when: inventory_hostname in groups['masters']
+
+- name: Copy admin.conf to user's kube config
+  ansible.builtin.copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /home/{{ ansible_user }}/.kube/config
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0600'
+    remote_src: yes
+  become: true
+  when: inventory_hostname in groups['masters']
+
+- name: Install Calico pod network
+  ansible.builtin.command: >
+    kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/calico.yaml
+  become: true
+  become_user: "{{ ansible_user }}"
+  environment:
+    KUBECONFIG: /home/{{ ansible_user }}/.kube/config
+  when: inventory_hostname in groups['masters']
 
 - name: Get join command
   ansible.builtin.command: kubeadm token create --print-join-command
