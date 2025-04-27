@@ -158,7 +158,15 @@
   become: true
  #notify: Restart containerd
  #when: ansible_facts['os_family'] == 'RedHat'
- 
+
+- name: Update sandbox_image for Kubernetes v1.33
+  ansible.builtin.lineinfile:
+    path: /etc/containerd/config.toml
+    regexp: '^ *[plugins."io.containerd.grpc.v1.cri"]'
+    line: '[plugins."io.containerd.grpc.v1.cri"] \n  sandbox_image = "registry.k8s.io/pause:3.10"'
+  become: true
+
+
 - name: Update sandbox_image for Kubernetes v1.33
   ansible.builtin.lineinfile:
     path: /etc/containerd/config.toml
@@ -227,27 +235,27 @@
   become: true
   when: inventory_hostname in groups['masters']
 
-#- name: Enable kubelet service
-#  ansible.builtin.service:
-#    name: kubelet
-#    state: stopped  # Stop kubelet until kubeadm configures it
-#    enabled: yes
-#  become: true
+- name: Enable kubelet service
+  ansible.builtin.service:
+    name: kubelet
+    state: stopped  # Stop kubelet until kubeadm configures it
+    enabled: yes
+  become: true
 
 # Tasks for master node
-#- name: Initialize Kubernetes cluster on master
-#  ansible.builtin.command: >
-#    kubeadm init --pod-network-cidr={{ kubernetes_pod_network_cidr }}
-#    --apiserver-advertise-address={{ ansible_default_ipv4.address }}
-#    --ignore-preflight-errors=SystemVerification,CRIService,NumCPU,Mem
-#  args:
-#    creates: /etc/kubernetes/admin.conf
-#  become: true
-#  register: kubeadm_init_result
-#  retries: 3
-#  delay: 10
-#  until: kubeadm_init_result.rc == 0
-#  when: inventory_hostname in groups['masters']
+- name: Initialize Kubernetes cluster on master
+  ansible.builtin.command: >
+    kubeadm init --pod-network-cidr={{ kubernetes_pod_network_cidr }}
+    --apiserver-advertise-address={{ ansible_default_ipv4.address }}
+    --ignore-preflight-errors=SystemVerification,CRIService,NumCPU,Mem
+  args:
+    creates: /etc/kubernetes/admin.conf
+  become: true
+  register: kubeadm_init_result
+  retries: 3
+  delay: 10
+  until: kubeadm_init_result.rc == 0
+  when: inventory_hostname in groups['masters']
 
 - name: Check if kubelet config exists on master
   ansible.builtin.stat:
