@@ -159,11 +159,13 @@
  #notify: Restart containerd
  #when: ansible_facts['os_family'] == 'RedHat'
 
-- name: Update sandbox_image for Kubernetes v1.33
-  ansible.builtin.lineinfile:
-    path: /etc/containerd/config.toml
-    regexp: '^ *[plugins."io.containerd.grpc.v1.cri"]'
-    line: '[plugins."io.containerd.grpc.v1.cri"] \n  sandbox_image = "registry.k8s.io/pause:3.10"'
+- name: Configure sandbox_image for Kubernetes CRI plugin
+  ansible.builtin.copy:
+    content: |
+      [plugins."io.containerd.grpc.v1.cri"]
+        sandbox_image = "registry.k8s.io/pause:3.10"
+    dest: /etc/containerd/config.toml
+    mode: '0644'
   become: true
 
 
