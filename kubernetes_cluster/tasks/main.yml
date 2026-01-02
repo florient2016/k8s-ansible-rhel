@@ -8,10 +8,14 @@
   ignore_errors: true  # Skip if already registered or using a local repo
 
 - name: Enable required RHEL repositories
-  ansible.builtin.command: subscription-manager repos --enable=rhel-8-for-x86_64-baseos-rpms --enable=rhel-8-for-x86_64-appstream-rpms
+  ansible.builtin.command: subscription-manager repos --enable="{{ item }}" --enable="{{ item }}"
   become: true
   changed_when: true
+  loop:
+    - rhel-8-for-x86_64-baseos-rpms
+    - rhel-8-for-x86_64-appstream-rpms
   when: ansible_facts['os_family'] == 'RedHat'
+  ignore_errors: true  # Skip if repos are already enabled or using a local repo
 
 - name: Install prerequisite packages
   ansible.builtin.dnf:
@@ -97,12 +101,13 @@
 #  become: true
 #  when: ansible_facts['os_family'] == 'RedHat'
 
-#- name: Open Kubernetes ports
-#  ansible.builtin.firewalld:
-#    port: "{{ item }}"
-#    permanent: yes
-#    state: enabled
-#    immediate: yes
+
+#- name: Open Kubernetes ports with firewalld (shell)
+#  ansible.builtin.shell: |
+#    firewall-cmd --permanent --add-port={{ item }} &&
+#    firewall-cmd --add-port={{ item }}
+#  args:
+#    executable: /bin/bash
 #  loop:
 #    - 6443/tcp  # API server
 #    - 2379-2380/tcp  # etcd
